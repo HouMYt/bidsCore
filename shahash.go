@@ -3,7 +3,6 @@ package bids_core
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/btcsuite/fastsha256"
 )
 
 
@@ -107,16 +106,4 @@ func NewShaHashFromStr(hash string) (*ShaHash, error) {
 	return &ret, nil
 }
 
-// DoubleSha256 calculates sha256(sha256(b)) and returns the resulting bytes.
-func DoubleSha256(b []byte) []byte {
-	first := fastsha256.Sum256(b)
-	second := fastsha256.Sum256(first[:])
-	return second[:]
-}
 
-// DoubleSha256SH calculates sha256(sha256(b)) and returns the resulting bytes
-// as a ShaHash.
-func DoubleSha256SH(b []byte) ShaHash {
-	first := fastsha256.Sum256(b)
-	return ShaHash(fastsha256.Sum256(first[:]))
-}
