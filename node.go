@@ -1,13 +1,18 @@
 package main
 
-import "btcd/btcec"
+import (
+	"github.com/btcsuite/btcd/btcec"
+	"main/Blockchain"
+	aggSig_pkg "main/aggSig"
+)
 
 type Node struct {
 	NodeID        string
 	NodeTable     map[string]string // key=nodeID, value=url
 	PKTable 	  map[string]btcec.PublicKey
-	TopIndex	  uint32
 	privateKey    btcec.PrivateKey
+	pkg 		  aggSig_pkg.PKG
+	tops		  map[uint32]Blockchain.BlockHeader
 }
 
 func NewNode(nodeID string)*Node  {

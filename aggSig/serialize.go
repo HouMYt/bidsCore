@@ -1,60 +1,23 @@
-package Blockchain
+package aggSig_pkg
 
 import (
-	"bytes"
 	"encoding/binary"
-	"github.com/btcsuite/fastsha256"
+	"github.com/Nik-U/pbc"
 	"io"
 )
+type wmsg [wlength]byte
+type elmsg [ellength]byte
 
-const AggSiglength = 35
-
-const NodeSiglength = 128
-
-const SensorSiglength = 32
-
-type AggSig [AggSiglength]byte
-
-type NodeSig [NodeSiglength]byte
-
-type SensorSig [SensorSiglength]byte
-
-const Nodeidlength  = 16
-// DoubleSha256 calculates sha256(sha256(b)) and returns the resulting bytes.
-func DoubleSha256(b []byte) []byte {
-	first := fastsha256.Sum256(b)
-	second := fastsha256.Sum256(first[:])
-	return second[:]
-}
-
-// DoubleSha256SH calculates sha256(sha256(b)) and returns the resulting bytes
-// as a ShaHash.
-func DoubleSha256SH(b []byte) ShaHash {
-	first := fastsha256.Sum256(b)
-	return ShaHash(fastsha256.Sum256(first[:]))
-}
-
-func WriteElements(w io.Writer, elements ...interface{}) error {
+func writeElements(w io.Writer, elements ...interface{}) error {
 	for _, element := range elements {
-		err := WriteElement(w, element)
+		err := writeElement(w, element)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
-
-func writeTxs(w io.Writer, elements ...[datamsglehgth+idlength]byte) error {
-	for _, element := range elements {
-		err := WriteElement(w, element)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func WriteElement(w io.Writer, element interface{}) error {
+func writeElement(w io.Writer, element interface{}) error {
 	var scratch [8]byte
 
 	// Attempt to write the element based on the concrete type via fast
@@ -109,6 +72,13 @@ func WriteElement(w io.Writer, element interface{}) error {
 		}
 		return nil
 
+	// Message header checksum.
+	case [4]byte:
+		_, err := w.Write(e[:])
+		if err != nil {
+			return err
+		}
+		return nil
 
 	// IP address.
 	case [16]byte:
@@ -118,37 +88,13 @@ func WriteElement(w io.Writer, element interface{}) error {
 		}
 		return nil
 
-	case ShaHash:
+	case wmsg:
 		_, err := w.Write(e[:])
 		if err != nil {
 			return err
 		}
 		return nil
-	case NodeSig:
-		_, err := w.Write(e[:])
-		if err != nil {
-			return err
-		}
-		return nil
-	case AggSig:
-		_, err := w.Write(e[:])
-		if err != nil {
-			return err
-		}
-		return nil
-	case [idlength]byte:
-		_, err := w.Write(e[:])
-		if err != nil {
-			return err
-		}
-		return nil
-	case [datamsglehgth]byte:
-		_, err := w.Write(e[:])
-		if err != nil {
-			return err
-		}
-		return nil
-	case [datamsglehgth+idlength]byte:
+	case elmsg:
 		_, err := w.Write(e[:])
 		if err != nil {
 			return err
@@ -156,39 +102,22 @@ func WriteElement(w io.Writer, element interface{}) error {
 		return nil
 	}
 
-
 	// Fall back to the slower binary.Write if a fast path was not available
 	// above.
 	return binary.Write(w, binary.LittleEndian, element)
 }
-
-func ReadElements(r io.Reader, elements ...interface{}) error {
+func readElements(r io.Reader, elements ...interface{}) error {
 	for _, element := range elements {
-		err := ReadElement(r, element)
+		err := readElement(r, element)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
-func readTxs(buf *bytes.Reader)([][datamsglehgth+idlength]byte,error) {
-	var txsmsg [][datamsglehgth+idlength]byte
-	for{
-		if buf.Len()<datamsglehgth+idlength{
-			break
-		}
-		var element [datamsglehgth+idlength]byte
-		err := ReadElement(buf,&element)
-		if err!=nil{
-			return nil,err
-		}
-		txsmsg = append(txsmsg,element)
-	}
-	return txsmsg,nil
-}
 // readElement reads the next sequence of bytes from r using little endian
 // depending on the concrete type of element pointed to.
-func ReadElement(r io.Reader, element interface{}) error {
+func readElement(r io.Reader, element interface{}) error {
 	var scratch [8]byte
 
 	// Attempt to read the element based on the concrete type via fast
@@ -259,25 +188,13 @@ func ReadElement(r io.Reader, element interface{}) error {
 		}
 		return nil
 
-	case *ShaHash:
+	case *wmsg:
 		_, err := io.ReadFull(r, e[:])
 		if err != nil {
 			return err
 		}
 		return nil
-	case *AggSig:
-		_, err := io.ReadFull(r, e[:])
-		if err != nil {
-			return err
-		}
-		return nil
-	case *NodeSig:
-		_, err := io.ReadFull(r, e[:])
-		if err != nil {
-			return err
-		}
-		return nil
-	case *[datamsglehgth+idlength]byte:
+	case *elmsg:
 		_, err := io.ReadFull(r, e[:])
 		if err != nil {
 			return err
@@ -287,4 +204,25 @@ func ReadElement(r io.Reader, element interface{}) error {
 	// Fall back to the slower binary.Read if a fast path was not available
 	// above.
 	return binary.Read(r, binary.LittleEndian, element)
+}
+func writeAggSig(w io.Writer,sig *Signature)error{
+	var whash wmsg
+	copy(whash[:],sig.w)
+	var shash,thash elmsg
+	copy(shash[:],sig.S.Bytes())
+	copy(thash[:],sig.T.Bytes())
+	return writeElements(w,whash,shash, thash)
+}
+func readAggSig(r io.Reader,sig *Signature,pairing *pbc.Pairing) error {
+	var whash wmsg
+	var shash,thash elmsg
+	err := readElements(r,&whash,&shash,&thash)
+	if err!=nil {
+		return err
+	}
+	sig.w = whash[:]
+	sig.S = pairing.NewG1().SetBytes(shash[:])
+	sig.T = pairing.NewG2().SetBytes(thash[:])
+	sig.pairing = pairing
+	return nil
 }
