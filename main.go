@@ -1,4 +1,4 @@
-package main
+package bids_core
 
 import "fmt"
 

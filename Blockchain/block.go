@@ -1,12 +1,12 @@
 package Blockchain
 
 import (
+	aggSig_pkg "bids_core/aggSig"
 	"bytes"
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec"
 	"io"
-	aggSig_pkg "main/aggSig"
 	"time"
 )
 
@@ -162,7 +162,7 @@ func (block *Block) BlockVerify(pubkey *btcec.PublicKey, top BlockHeader, pkg *a
 		return false, errors.New("rootSig verify failed")
 	}
 	//验证prevhash
-	if block.Header.PrevHash != top.MerkleRoot {
+	if block.Header.PrevHash != top.BlockSha() {
 		return false, errors.New("prevhash verify failed")
 	}
 	//验证aggSig

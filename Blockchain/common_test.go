@@ -86,3 +86,25 @@ func TestTx_Serialize(t *testing.T) {
 	}
 	fmt.Printf("%v\n", newtxs)
 }
+func TestSigParse(t *testing.T)  {
+	hash:=[]byte("hello")
+	privateKey,_ := btcec.NewPrivateKey(btcec.S256())
+	sig,_ := privateKey.Sign(hash)
+	sigmsg := sig.Serialize()
+	fmt.Printf("origin verify: %v\n",sig.Verify(hash,privateKey.PubKey()))
+	var s [128]byte
+	copy(s[:],sigmsg)
+	fmt.Printf("s:\n%v\n",s)
+	var scopy []byte
+	scopy = append(scopy,s[:]...)
+	fmt.Printf("sigmsg :\n%v\n",sigmsg)
+	fmt.Printf("scopy :\n%v\n",scopy)
+	sigcopy,err:=btcec.ParseDERSignature(sigmsg,btcec.S256())
+	if err!=nil{
+		t.Fatal(err)
+	}
+	fmt.Printf("parse verify: %v\n",sigcopy.Verify(hash,privateKey.PubKey()))
+}
+func TestShaHash_Bytes(t *testing.T) {
+
+}

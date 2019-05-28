@@ -1,4 +1,4 @@
-package main
+package bids_core
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ func NewServer(nodeID string) *Server{
 	return server
 }
 func (server *Server)setRoute(){
-	server.mux.HandleFunc("/Block",server.getBlock)
+	//server.mux.HandleFunc("/Block",server.getBlock)
 }
 func (server *Server)getProposal(writer http.ResponseWriter, request *http.Request){
 
