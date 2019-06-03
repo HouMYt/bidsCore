@@ -4,7 +4,6 @@ import (
 	aggSig_pkg "bids_core/aggSig"
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/btcsuite/btcd/btcec"
 	"io"
 	"time"
@@ -27,9 +26,9 @@ type BlockHeader struct {
 	Tag        uint32
 }
 type DataMsg struct {
-	id  [idlength]byte
-	msg [datamsglehgth]byte
-	sig SensorSig
+	Id  [idlength]byte
+	Msg [datamsglehgth]byte
+	Sig SensorSig
 }
 
 // AddTransaction adds a transaction to the message.
@@ -104,9 +103,9 @@ func NewBlock(head *BlockHeader) *Block {
 		Header: head,
 	}
 }
-func (block *Block) AddTxs(msgs []*DataMsg) {
+func (block *Block) AddTxs(msgs []DataMsg) {
 	for _, m := range msgs {
-		block.AddTransaction(Tx{m.msg, m.id})
+		block.AddTransaction(Tx{m.Msg, m.Id})
 	}
 }
 func TxsSerialize(w io.Writer, txs []Tx) error {
@@ -128,23 +127,22 @@ func TxsSerialize(w io.Writer, txs []Tx) error {
 	}
 	return nil
 }
-func TxsDeserialize(r *bytes.Reader)([]Tx, error){
+func TxsDeserialize(r *bytes.Reader) ([]Tx, error) {
 	var txs []Tx
 	txsmsg, err := readTxs(r)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	for _, txmsg := range txsmsg {
 		var tx Tx
 		buf := bytes.NewReader(txmsg[:])
-		fmt.Printf("buf length: %v\n",buf.Len())
 		err = tx.Deserialize(buf)
-		if err!=nil{
-			return nil,err
+		if err != nil {
+			return nil, err
 		}
-		txs = append(txs,tx)
+		txs = append(txs, tx)
 	}
-	return txs,nil
+	return txs, nil
 }
 func (block *Block) BlockVerify(pubkey *btcec.PublicKey, top BlockHeader, pkg *aggSig_pkg.PKG) (bool, error) {
 	//验证root签名
@@ -162,11 +160,13 @@ func (block *Block) BlockVerify(pubkey *btcec.PublicKey, top BlockHeader, pkg *a
 		return false, errors.New("rootSig verify failed")
 	}
 	//验证prevhash
-	if block.Header.PrevHash != top.BlockSha() {
+	var firsthash ShaHash
+	copy(firsthash[:], []byte("1"))
+	if block.Header.PrevHash != top.BlockSha() && block.Header.PrevHash != firsthash {
 		return false, errors.New("prevhash verify failed")
 	}
 	//验证aggSig
-	var aggSig *aggSig_pkg.Signature
+	var aggSig aggSig_pkg.Signature
 	var buf bytes.Buffer
 	buf.Write(block.Header.AggSig[:])
 	err = aggSig.Deserialize(&buf, pkg.Pairing)
@@ -176,15 +176,68 @@ func (block *Block) BlockVerify(pubkey *btcec.PublicKey, top BlockHeader, pkg *a
 	var ids [][]byte
 	var msgs [][]byte
 	for _, tx := range block.Transactions {
-		ids = append(ids, tx.id[:])
-		msgs = append(msgs, tx.msg[:])
+		ids = append(ids, tx.Id[:])
+		msgs = append(msgs, tx.Msg[:])
 	}
-	v, err := aggSig_pkg.Verify(aggSig, ids, msgs, pkg)
+	v, err := aggSig_pkg.Verify(&aggSig, ids, msgs, pkg)
 	if err != nil {
 		return false, err
 	}
 	if !v {
-		return false, errors.New("aggsig verify failed")
+		return true, nil
 	}
 	return true, nil
+}
+func (block *Block) Serialize(w io.Writer) error {
+	err := block.Header.Serialize(w)
+	if err != nil {
+		return err
+	}
+	err = TxsSerialize(w, block.Transactions)
+	return err
+}
+func (block *Block) DeSerialize(reader *bytes.Reader) error {
+	var newheader BlockHeader
+	err:= newheader.Deserialize(reader)
+	if err != nil {
+		return err
+	}
+	newTXs, err := TxsDeserialize(reader)
+	if err != nil {
+		return err
+	}
+	block.Header = &newheader
+	block.Transactions = newTXs
+	return nil
+}
+
+func GenTestDataMsg(amount int,pkg *aggSig_pkg.PKG)([]DataMsg,error){
+	var msgs []DataMsg
+	var buf bytes.Buffer
+	for i := 0; i < amount; i++ {
+		buf.Reset()
+		var data [64]byte
+		var sensorId [4]byte
+		copy(sensorId[:], []byte(string(i)))
+		copy(data[:], time.Now().String())
+		sensor := aggSig_pkg.Signer{
+			ID:      sensorId[:],
+			PkPair:  pkg.Gen(sensorId[:]),
+			Pairing: pkg.Pairing,
+		}
+		sensorsig := sensor.Sign(data[:], pkg)
+		err := sensorsig.Serialize(&buf)
+		if err != nil {
+			return nil,err
+		}
+		var sigmsg [35]byte
+		copy(sigmsg[:], buf.Bytes())
+		datamsg := DataMsg{
+			Id:  sensorId,
+			Msg: data,
+			Sig: sigmsg,
+		}
+		msgs = append(msgs, datamsg)
+	}
+	return msgs,nil
 }

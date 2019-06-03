@@ -11,7 +11,7 @@ const AggSiglength = 35
 
 const NodeSiglength = 128
 
-const SensorSiglength = 32
+const SensorSiglength = 35
 
 type AggSig [AggSiglength]byte
 

@@ -27,7 +27,7 @@ func TestAggSig_pkg(t *testing.T) {
 	pkg := &PKG{
 		Pairing:   pairing,
 		Generator: generator,
-		secretKey: secretKey,
+		SecretKey: secretKey,
 		PublicKey: pubicKey,
 	}
 	signers := make([]Signer, 3)
@@ -35,8 +35,8 @@ func TestAggSig_pkg(t *testing.T) {
 	signers[1].ID = []byte("23456")
 	signers[2].ID = []byte("33457")
 	for i := range signers {
-		signers[i].pairing = pairing
-		signers[i].pkPair = pkg.Gen(signers[i].ID)
+		signers[i].Pairing = pairing
+		signers[i].PkPair = pkg.Gen(signers[i].ID)
 	}
 	fmt.Printf("%v", pkg.PublicKey.Sign())
 	msgs := [][]byte{[]byte("12llgas3"), []byte("24fasd351"), []byte("safasfd")}
@@ -70,7 +70,7 @@ func TestSignature_Serialize(t *testing.T) {
 	pkg := &PKG{
 		Pairing:   pairing,
 		Generator: generator,
-		secretKey: secretKey,
+		SecretKey: secretKey,
 		PublicKey: pubicKey,
 	}
 	signers := make([]Signer, 3)
@@ -78,11 +78,11 @@ func TestSignature_Serialize(t *testing.T) {
 	signers[1].ID = []byte("23456")
 	signers[2].ID = []byte("33457")
 	for i := range signers {
-		signers[i].pairing = pairing
-		signers[i].pkPair = pkg.Gen(signers[i].ID)
+		signers[i].Pairing = pairing
+		signers[i].PkPair = pkg.Gen(signers[i].ID)
 	}
 	fmt.Printf("%v", pkg.PublicKey.Sign())
-	msgs := [][]byte{[]byte("12llgas3"), []byte("24fasd351"), []byte("safasfd")}
+	msgs := [][]byte{[]byte("12llgaqqs3"), []byte("24fasd351"), []byte("safasfd")}
 	s0 := signers[0].Sign(msgs[0], pkg)
 	s1 := signers[1].Sign(msgs[1], pkg)
 	s2 := signers[2].Sign(msgs[2], pkg)

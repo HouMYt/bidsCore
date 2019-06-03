@@ -1,4 +1,4 @@
-package bids_core
+package main
 
 import (
 	"bids_core/Blockchain"
@@ -7,23 +7,14 @@ import (
 )
 
 type Node struct {
-	NodeID     string
-	NodeTable  map[string]string // key=nodeID, value=url
-	PKTable    map[string]*btcec.PublicKey
-	privateKey btcec.PrivateKey
-	pkg        aggSig_pkg.PKG
+	NodeID     uint32
+	NodeTable  map[uint32]string // key=nodeID, value=url
+	PKTable    map[uint32]*btcec.PublicKey
+	privateKey *btcec.PrivateKey
+	pkg        *aggSig_pkg.PKG
 	tops       map[uint32]Blockchain.BlockHeader
-	Prepared   map[string]ProposalAbst
-}
-
-func NewNode(nodeID string) *Node {
-	return &Node{
-		NodeID: nodeID,
-		NodeTable: map[string]string{
-			"Apple":  "localhost:1111",
-			"MS":     "localhost:1112",
-			"Google": "localhost:1113",
-			"IBM":    "localhost:1114",
-		},
-	}
+	Prepared   map[uint32]Proposal
+	PreparedNum map[uint32]int
+	preparelog map[uint32][]*Prepared
+	Done chan struct{}
 }

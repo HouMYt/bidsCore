@@ -6,8 +6,8 @@ import (
 )
 
 type Tx struct {
-	msg [datamsglehgth]byte
-	id  [idlength]byte
+	Msg [datamsglehgth]byte
+	Id  [idlength]byte
 }
 
 func (tx *Tx) TxSha() ShaHash {
@@ -16,8 +16,8 @@ func (tx *Tx) TxSha() ShaHash {
 	return DoubleSha256SH(buf.Bytes())
 }
 func (tx *Tx) Serialize(writer io.Writer) error {
-	return WriteElements(writer, tx.msg, tx.id)
+	return WriteElements(writer, tx.Msg, tx.Id)
 }
 func (tx *Tx)Deserialize(r io.Reader)error{
-	return ReadElements(r,&tx.msg,&tx.id)
+	return ReadElements(r,&tx.Msg,&tx.Id)
 }

@@ -1,26 +1,27 @@
-package bids_core
+package main
 
 import (
+	"bids_core/Blockchain"
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"github.com/btcsuite/btcd/btcec"
 	"io"
-	"bids_core/Blockchain"
 )
 
 type Proposal struct {
 	Abst  ProposalAbst
-	Block *Blockchain.Block
+	Block Blockchain.Block
 }
 
 type ProposalAbst struct {
-	Proposer string
+	Proposer uint32
 	Hash     Blockchain.ShaHash
 }
 
 type Prepared struct {
 	Abst   ProposalAbst
-	Id     string
+	Id     uint32
 	Result bool
 	Sig    *btcec.Signature
 }
@@ -31,16 +32,12 @@ func (node *Node) NewProposal(block *Blockchain.Block) *Proposal {
 			Proposer: node.NodeID,
 			Hash:     block.Header.BlockSha(),
 		},
-		Block: block,
+		Block: *block,
 	}
 }
 
 func (proposal *Proposal) Serialize(w io.Writer) error {
-	err := proposal.Block.Header.Serialize(w)
-	if err != nil {
-		return err
-	}
-	err = Blockchain.TxsSerialize(w, proposal.Block.Transactions)
+	err:=proposal.Block.Serialize(w)
 	if err != nil {
 		return err
 	}
@@ -48,9 +45,7 @@ func (proposal *Proposal) Serialize(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	var id [16]byte
-	copy(id[:], []byte(proposal.Abst.Proposer))
-	err = Blockchain.WriteElement(w, id)
+	err = Blockchain.WriteElement(w, proposal.Abst.Proposer)
 	if err != nil {
 		return err
 	}
@@ -58,11 +53,7 @@ func (proposal *Proposal) Serialize(w io.Writer) error {
 }
 
 func (proposal *Proposal) Deserialize(r *bytes.Reader) error {
-	err := proposal.Block.Header.Deserialize(r)
-	if err != nil {
-		return err
-	}
-	proposal.Block.Transactions, err = Blockchain.TxsDeserialize(r)
+	err := proposal.Block.DeSerialize(r)
 	if err != nil {
 		return err
 	}
@@ -70,26 +61,21 @@ func (proposal *Proposal) Deserialize(r *bytes.Reader) error {
 	if err != nil {
 		return err
 	}
-	var idmsg [16]byte
-	err = Blockchain.ReadElement(r, &idmsg)
+	err = Blockchain.ReadElement(r, &proposal.Abst.Proposer)
 	if err != nil {
 		return err
 	}
-	proposal.Abst.Proposer = string(idmsg[:])
 	return nil
 }
 
 func (node *Node) ProposalVerify(proposal *Proposal) (bool, error) {
 	block := proposal.Block
-	return block.BlockVerify(node.PKTable[proposal.Abst.Proposer], node.tops[block.Header.Tag], &node.pkg)
+	return block.BlockVerify(node.PKTable[proposal.Abst.Proposer], node.tops[block.Header.Tag], node.pkg)
 }
 
-func (node *Node) NewPrepared(proposal Proposal) (*Prepared, error) {
-	temp := []byte(proposal.Abst.Proposer)
-	var proposerid [16]byte
-	copy(proposerid[:], temp)
+func (node *Node) NewPrepared(proposal *Proposal) (*Prepared, error) {
 	var buf bytes.Buffer
-	err := Blockchain.WriteElement(&buf, proposerid)
+	err := Blockchain.WriteElement(&buf, proposal.Abst.Proposer)
 	if err != nil {
 		return nil, err
 	}
@@ -97,10 +83,7 @@ func (node *Node) NewPrepared(proposal Proposal) (*Prepared, error) {
 	if err != nil {
 		return nil, err
 	}
-	temp = []byte(node.NodeID)
-	var preparerId [16]byte
-	copy(preparerId[:], temp)
-	err = Blockchain.WriteElement(&buf, preparerId)
+	err = Blockchain.WriteElement(&buf, node.NodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -113,20 +96,17 @@ func (node *Node) NewPrepared(proposal Proposal) (*Prepared, error) {
 	if err != nil {
 		return nil, err
 	}
-	prepared := &Prepared{
+	prepared := Prepared{
 		Abst:   proposal.Abst,
 		Id:     node.NodeID,
 		Result: result,
 		Sig:    sig,
 	}
-	return prepared, nil
+	return &prepared, nil
 }
 
 func (prepare *Prepared) Serialize(w io.Writer) error {
-	temp := []byte(prepare.Abst.Proposer)
-	var proposerid [16]byte
-	copy(proposerid[:], temp)
-	err := Blockchain.WriteElement(w, proposerid)
+	err := Blockchain.WriteElement(w, prepare.Abst.Proposer)
 	if err != nil {
 		return err
 	}
@@ -134,10 +114,7 @@ func (prepare *Prepared) Serialize(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	temp = []byte(prepare.Id)
-	var preparerId [16]byte
-	copy(preparerId[:], temp)
-	err = Blockchain.WriteElement(w, preparerId)
+	err = Blockchain.WriteElement(w, prepare.Id)
 	if err != nil {
 		return err
 	}
@@ -157,21 +134,11 @@ func (prepare *Prepared) Serialize(w io.Writer) error {
 }
 
 func (prepare *Prepared) Deserialize(r io.Reader) error {
-	var proposerId, prepareId [16]byte
 	var s [Blockchain.NodeSiglength]byte
-	err := Blockchain.ReadElement(r, &proposerId)
+	err := Blockchain.ReadElements(r, &prepare.Abst.Proposer,&prepare.Abst.Hash, &prepare.Id, &prepare.Result, &s)
 	if err != nil {
 		return err
 	}
-	var temp, temp2 []byte
-	temp = append(temp, proposerId[:]...)
-	prepare.Abst.Proposer = string(temp)
-	err = Blockchain.ReadElements(r, &prepare.Abst.Hash, &prepareId, &prepare.Result, &s)
-	if err != nil {
-		return err
-	}
-	temp2 = append(temp2, prepareId[:]...)
-	prepare.Id = string(temp2)
 	sig, err := btcec.ParseDERSignature(s[:], btcec.S256())
 	if err != nil {
 		return err
@@ -184,15 +151,12 @@ func (abst *ProposalAbst) Equal(comp ProposalAbst) bool {
 	return abst.Hash.IsEqual(&comp.Hash) && abst.Proposer == comp.Proposer
 }
 
-func (node *Node) VerifyPrepared(prepare Prepared) (bool, error) {
+func (node *Node) VerifyPrepared(prepare *Prepared) (bool, error) {
 	if !prepare.Result {
 		return false, nil
 	}
 	var w bytes.Buffer
-	temp := []byte(prepare.Abst.Proposer)
-	var proposerid [16]byte
-	copy(proposerid[:], temp)
-	err := Blockchain.WriteElement(&w, proposerid)
+	err := Blockchain.WriteElement(&w, prepare.Abst.Proposer)
 	if err != nil {
 		return false, err
 	}
@@ -200,10 +164,7 @@ func (node *Node) VerifyPrepared(prepare Prepared) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	temp = []byte(prepare.Id)
-	var preparerId [16]byte
-	copy(preparerId[:], temp)
-	err = Blockchain.WriteElement(&w, preparerId)
+	err = Blockchain.WriteElement(&w, prepare.Id)
 	if err != nil {
 		return false, err
 	}
@@ -215,9 +176,19 @@ func (node *Node) VerifyPrepared(prepare Prepared) (bool, error) {
 	if ! prepare.Sig.Verify(w.Bytes(), node.PKTable[prepare.Id]) {
 		return false, nil
 	}
-	if !prepare.Abst.Equal(node.Prepared[prepare.Abst.Proposer]) {
+	if !prepare.Abst.Equal(node.Prepared[prepare.Abst.Proposer].Abst) {
 		return false, errors.New("not the same prepared")
 	}
 	return true,nil
 
+}
+func MsgEncode(reader io.Reader,msg []byte)error{
+	var buf []byte
+	hex.Encode(buf,msg)
+	_,err := reader.Read(buf)
+	return err
+}
+func MsgDecode( msgencode []byte)( msg []byte,err error) {
+	_,err = hex.Decode(msg,msgencode)
+	return msg,err
 }

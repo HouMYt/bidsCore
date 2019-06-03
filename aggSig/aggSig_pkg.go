@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/Nik-U/pbc"
 	"io"
 	"math/big"
@@ -17,8 +16,8 @@ const ellength = 8
 
 type Signer struct {
 	ID      []byte
-	pkPair  PubKeyPair
-	pairing *pbc.Pairing
+	PkPair  PubKeyPair
+	Pairing *pbc.Pairing
 }
 type Signature struct {
 	w       []byte
@@ -32,29 +31,29 @@ func (*Signer) Getw() []byte {
 }
 func (signer *Signer) Sign(msg []byte, pkg *PKG) *Signature {
 	w := signer.Getw()
-	Pw := signer.pairing.NewG1()
+	Pw := signer.Pairing.NewG1()
 	Pw.SetFromHash(w)
-	c := signer.pairing.NewZr()
+	c := signer.Pairing.NewZr()
 	var temphash []byte
 	temphash = append(msg, signer.ID...)
 	temphash = append(temphash, w...)
 	c.SetFromHash(temphash)
-	r := signer.pairing.NewZr()
+	r := signer.Pairing.NewZr()
 	r.Rand()
-	t := signer.pairing.NewG2()
+	t := signer.Pairing.NewG2()
 	t.PowZn(pkg.Generator, r)
-	temp1 := signer.pairing.NewG1()
+	temp1 := signer.Pairing.NewG1()
 	temp1.PowZn(Pw, r)
-	temp2 := signer.pairing.NewG1()
-	temp2.PowZn(signer.pkPair.P1, c)
-	sig := signer.pairing.NewG1()
-	sig.Mul(temp1, signer.pkPair.P0)
+	temp2 := signer.Pairing.NewG1()
+	temp2.PowZn(signer.PkPair.P1, c)
+	sig := signer.Pairing.NewG1()
+	sig.Mul(temp1, signer.PkPair.P0)
 	sig.Mul(sig, temp2)
 	return &Signature{
 		S:       sig,
 		w:       w,
 		T:       t,
-		pairing: signer.pairing,
+		pairing: signer.Pairing,
 	}
 }
 func AggSig(sigs []*Signature) (*Signature, error) {
@@ -110,13 +109,10 @@ func Verify(sig *Signature, id [][]byte, msg [][]byte, pkg *PKG) (bool, error) {
 	right0.Pair(pw, sig.T)
 	right1.Pair(aggP0.Mul(aggP0, aggP1), pkg.PublicKey)
 	right.ProdPair(pw, sig.T, aggP0.Mul(aggP0, aggP1), pkg.PublicKey)
-	//right.Mul(right0,right1)
-	fmt.Printf("right0 %v \n", left.Equals(right0))
-	fmt.Printf("right1 %v \n", left.Equals(right1))
 	if left.Equals(right) {
 		return true, nil
 	}
-	return false, errors.New("false")
+	return false, nil
 }
 func (s *Signature) Serialize(w io.Writer) error {
 	return writeAggSig(w, s)

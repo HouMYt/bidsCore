@@ -7,7 +7,7 @@ import (
 
 type PKG struct {
 	Pairing   *pbc.Pairing
-	secretKey *pbc.Element
+	SecretKey *pbc.Element
 	Generator *pbc.Element
 	PublicKey *pbc.Element
 }
@@ -23,8 +23,8 @@ func (pkg *PKG) Gen(id []byte) PubKeyPair {
 	g1 := pkg.Pairing.NewG1()
 	g1.SetFromHash(append(id, big.NewInt(1).Bytes()...))
 	P0 := pkg.Pairing.NewG1()
-	P0.PowZn(g0, pkg.secretKey)
+	P0.PowZn(g0, pkg.SecretKey)
 	P1 := pkg.Pairing.NewG1()
-	P1.PowZn(g1, pkg.secretKey)
+	P1.PowZn(g1, pkg.SecretKey)
 	return PubKeyPair{P0, P1}
 }
