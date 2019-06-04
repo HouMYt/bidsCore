@@ -39,7 +39,7 @@ func main() {
 	for i := 1; i < *nodelen+1; i++ {
 		privKey, _ := btcec.NewPrivateKey(btcec.S256())
 		pubKeyTable[uint32(i)] = privKey.PubKey()
-		UrlTable[uint32(i)] = "localhost:666" + strconv.Itoa(i)
+		UrlTable[uint32(i)] = "localhost:" + strconv.Itoa(6600+i)
 		node := Node{
 			NodeID:     uint32(i),
 			privateKey: privKey,

@@ -354,3 +354,7 @@ func TestBuf(t *testing.T) {
 	fmt.Printf("%v", []byte("123"))
 	fmt.Printf("%v", buf.Bytes())
 }
+func TestDiv(t *testing.T)  {
+	a := 10
+	fmt.Println(a/3)
+}

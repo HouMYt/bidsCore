@@ -83,7 +83,7 @@ func (server *Server) getProposal(writer http.ResponseWriter, request *http.Requ
 	msg := Outmsg{"Prepare", buffer.Bytes()}
 	server.msgqueue <- msg
 	//判断prepare数是否满足commit条件
-	if server.node.PreparedNum[prepare.Abst.Proposer] > len(server.node.NodeTable)-3 {
+	if server.node.PreparedNum[prepare.Abst.Proposer] > ((len(server.node.NodeTable)-1)/3)*2 {
 		fmt.Println("node " + strconv.Itoa(int(server.node.NodeID)) + " commit")
 		server.node.PreparedNum[prepare.Abst.Proposer] = 0
 		server.node.tops[prepare.Abst.Proposer] = *server.node.Prepared[prepare.Abst.Proposer].Block.Header
@@ -127,7 +127,7 @@ func (server *Server) getPrepare(writer http.ResponseWriter, request *http.Reque
 	server.node.PreparedNum[prepare.Abst.Proposer] += 1
 	fmt.Printf("node "+strconv.Itoa(int(server.node.NodeID))+" %v prepare\n", server.node.PreparedNum[prepare.Abst.Proposer])
 	//判断prepare数是否满足commit条件
-	if server.node.PreparedNum[prepare.Abst.Proposer] > len(server.node.NodeTable)-3 {
+	if server.node.PreparedNum[prepare.Abst.Proposer] >((len(server.node.NodeTable)-1)/3)*2{
 		fmt.Println("node " + strconv.Itoa(int(server.node.NodeID)) + " commit")
 		server.node.PreparedNum[prepare.Abst.Proposer] = 0
 		server.node.tops[prepare.Abst.Proposer] = *server.node.Prepared[prepare.Abst.Proposer].Block.Header
