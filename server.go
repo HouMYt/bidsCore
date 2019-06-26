@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -31,7 +32,7 @@ func (server *Server) setRoute() {
 	server.mux.HandleFunc("/Abort", server.getAbort)
 }
 func (server *Server) getProposal(writer http.ResponseWriter, request *http.Request) {
-	defer writer.Write([]byte("ok"))
+	//defer writer.Write([]byte("ok"))
 	defer request.Body.Close()
 	fmt.Println("node " + strconv.Itoa(int(server.node.NodeID)) + " get proposal")
 	var proposal Proposal
@@ -95,7 +96,7 @@ func (server *Server) getProposal(writer http.ResponseWriter, request *http.Requ
 
 }
 func (server *Server) getPrepare(writer http.ResponseWriter, request *http.Request) {
-	defer writer.Write([]byte("ok"))
+	//defer writer.Write([]byte("ok"))
 	defer request.Body.Close()
 	fmt.Println("node " + strconv.Itoa(int(server.node.NodeID)) + " get prepared")
 	var prepare Prepared
@@ -150,7 +151,15 @@ func (server *Server) Send() {
 			}
 			reader := bytes.NewReader(msg.Msg)
 			fmt.Println("node " + strconv.Itoa(int(server.node.NodeID))+"send "+msg.Type+" to"+strconv.Itoa(int(id)))
-			go http.Post("http://"+url+"/"+msg.Type, "text/plain", reader)
+			//go http.Post("http://"+url+"/"+msg.Type, "text/plain", reader)
+			ctx,cancel:= context.WithCancel(context.Background())
+			req,_:= http.NewRequest("Post","http://"+url+"/"+msg.Type,reader)
+			req.WithContext(ctx)
+			req.Header.Set("Content-Type", "text/plain")
+			go http.DefaultClient.Do(req)
+			cancel()
+
+
 		}
 	}
 }

@@ -5,12 +5,13 @@ import (
 	"bytes"
 	"errors"
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/fastsha256"
 	"io"
 	"time"
 )
 
 const defaultTransactionAlloc = 2048
-const datamsglehgth = 64
+const datamsglehgth = 1024
 const idlength = 4
 
 type Block struct {
@@ -175,9 +176,11 @@ func (block *Block) BlockVerify(pubkey *btcec.PublicKey, top BlockHeader, pkg *a
 	}
 	var ids [][]byte
 	var msgs [][]byte
+	var msghash ShaHash
 	for _, tx := range block.Transactions {
 		ids = append(ids, tx.Id[:])
-		msgs = append(msgs, tx.Msg[:])
+		msghash = fastsha256.Sum256(tx.Msg[:])
+		msgs = append(msgs, msghash[:])
 	}
 	v, err := aggSig_pkg.Verify(&aggSig, ids, msgs, pkg)
 	if err != nil {
@@ -216,7 +219,7 @@ func GenTestDataMsg(amount int,pkg *aggSig_pkg.PKG)([]DataMsg,error){
 	var buf bytes.Buffer
 	for i := 0; i < amount; i++ {
 		buf.Reset()
-		var data [64]byte
+		var data [datamsglehgth]byte
 		var sensorId [4]byte
 		copy(sensorId[:], []byte(string(i)))
 		copy(data[:], time.Now().String())

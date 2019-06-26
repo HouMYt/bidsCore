@@ -54,7 +54,7 @@ func TestWire(t *testing.T) {
 	node1.PKTable[uint32(1)] = publicKey1
 
 	//test block
-	var data1, data2 [64]byte
+	var data1, data2 [1024]byte
 	var sensorId1, sensorId2 [4]byte
 	copy(data1[:], []byte("hello"))
 	copy(data2[:], []byte("world"))
@@ -227,7 +227,7 @@ func BenchmarkBlockGen(b *testing.B) {
 
 	//Gen data msg
 	for i := 0; i < datalength; i++ {
-		var data  [64]byte
+		var data  [1024]byte
 		var sensorId [4]byte
 		copy(sensorId[:], []byte(string(i)))
 		copy(data[:], time.Now().String())

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/Nik-U/pbc"
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/fastsha256"
 	"strconv"
 	"time"
 )
@@ -71,7 +72,7 @@ func main() {
 	var msgs []Blockchain.DataMsg
 	for i := 0; i < *sensorlen; i++ {
 		buf.Reset()
-		var data [64]byte
+		var data [1024]byte
 		var sensorId [4]byte
 		copy(sensorId[:], []byte(string(i)))
 		copy(data[:], time.Now().String())
@@ -82,7 +83,8 @@ func main() {
 			PkPair:  pkg.Gen(sensorId[:]),
 			Pairing: pairing,
 		}
-		sensorsig := sensor.Sign(data[:], pkg)
+		datahash := fastsha256.Sum256(data[:])
+		sensorsig := sensor.Sign(datahash[:], pkg)
 		sensorsigs = append(sensorsigs, sensorsig)
 		sensorsig.Serialize(&buf)
 		var sigmsg [35]byte
